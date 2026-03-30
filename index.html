@@ -1,0 +1,1412 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI-Based Road Crack Detection & Severity Assessment System</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --primary: #0d1117;
+        --accent: #f4620f;
+        --accent2: #ff8c42;
+        --accent3: #1a73e8;
+        --light: #f5f5f5;
+        --muted: #9ca3af;
+        --card-bg: #161b22;
+        --border: rgba(244, 98, 15, 0.25);
+      }
+
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+
+      body {
+        font-family: "DM Sans", sans-serif;
+        background: var(--primary);
+        color: var(--light);
+        overflow: hidden;
+        height: 100vh;
+        width: 100vw;
+      }
+
+      .deck { width: 100%; height: 100vh; position: relative; }
+
+      .slide {
+        position: absolute;
+        inset: 0;
+        display: none;
+        flex-direction: column;
+        padding: 52px 64px;
+        opacity: 0;
+        transition: opacity 0.4s ease;
+      }
+      .slide.active { display: flex; opacity: 1; }
+
+      .slide::before {
+        content: "";
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, #f4620f 0%, #ff8c42 60%, #f4620f 100%);
+        z-index: 10;
+      }
+      .slide > * { position: relative; z-index: 1; }
+      .slide::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(244, 98, 15, 0.03) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(244, 98, 15, 0.03) 1px, transparent 1px);
+        background-size: 60px 60px;
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      .slide-num {
+        position: absolute;
+        bottom: 28px; right: 64px;
+        font-family: "Syne", sans-serif;
+        font-size: 12px;
+        color: var(--muted);
+        letter-spacing: 2px;
+        z-index: 10;
+      }
+
+      .logo-bar {
+        position: absolute;
+        top: 20px; left: 64px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-family: "Syne", sans-serif;
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--muted);
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        z-index: 10;
+      }
+      .logo-dot {
+        width: 8px; height: 8px;
+        border-radius: 50%;
+        background: var(--accent);
+        box-shadow: 0 0 10px var(--accent);
+      }
+
+      .nav {
+        position: fixed;
+        bottom: 32px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        z-index: 9999;
+        background: rgba(13, 17, 23, 0.92);
+        backdrop-filter: blur(12px);
+        border: 1px solid var(--border);
+        border-radius: 50px;
+        padding: 10px 24px;
+      }
+      .nav-btn {
+        background: none; border: none;
+        color: var(--accent);
+        font-size: 18px;
+        cursor: pointer;
+        width: 36px; height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.2s;
+      }
+      .nav-btn:hover { background: rgba(244, 98, 15, 0.1); }
+      .nav-dots { display: flex; gap: 6px; align-items: center; }
+      .nav-dot {
+        width: 6px; height: 6px;
+        border-radius: 50%;
+        background: var(--muted);
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .nav-dot.active {
+        background: var(--accent);
+        width: 20px;
+        border-radius: 3px;
+        box-shadow: 0 0 8px var(--accent);
+      }
+      .nav-counter {
+        font-family: "Syne", sans-serif;
+        font-size: 12px;
+        color: var(--muted);
+        min-width: 50px;
+        text-align: center;
+      }
+
+      h1.slide-title {
+        font-family: "Syne", sans-serif;
+        font-size: 52px; font-weight: 800;
+        line-height: 1.1; margin-bottom: 16px;
+      }
+      h2.section-title {
+        font-family: "Syne", sans-serif;
+        font-size: 36px; font-weight: 700;
+        line-height: 1.2; margin-bottom: 28px;
+      }
+      h3.card-title {
+        font-family: "Syne", sans-serif;
+        font-size: 16px; font-weight: 700;
+        margin-bottom: 8px;
+      }
+      .subtitle { font-size: 18px; color: var(--muted); line-height: 1.5; }
+      .tag {
+        display: inline-block;
+        background: rgba(244, 98, 15, 0.12);
+        border: 1px solid var(--border);
+        color: var(--accent);
+        font-family: "Syne", sans-serif;
+        font-size: 11px; font-weight: 600;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        padding: 4px 12px;
+        border-radius: 4px;
+        margin-bottom: 20px;
+      }
+      .accent-line {
+        width: 48px; height: 3px;
+        background: linear-gradient(90deg, var(--accent), var(--accent2));
+        border-radius: 2px;
+        margin-bottom: 24px;
+      }
+
+      .card {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 24px;
+      }
+      .card-accent  { border-left: 3px solid var(--accent); }
+      .card-accent2 { border-left: 3px solid var(--accent2); }
+      .card-accent-b { border-left: 3px solid #1a73e8; }
+
+      .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+      .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px; }
+
+      .bullet-list { list-style: none; }
+      .bullet-list li {
+        padding: 8px 0;
+        border-bottom: 1px solid rgba(244, 98, 15, 0.06);
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        font-size: 15px;
+        line-height: 1.5;
+      }
+      .bullet-list li:last-child { border-bottom: none; }
+      .bullet-list li::before {
+        content: "›";
+        color: var(--accent);
+        font-size: 18px; font-weight: 700;
+        flex-shrink: 0;
+        margin-top: -1px;
+      }
+
+      .stat-big {
+        font-family: "Syne", sans-serif;
+        font-size: 48px; font-weight: 800;
+        color: var(--accent); line-height: 1;
+      }
+      .stat-label { font-size: 13px; color: var(--muted); margin-top: 6px; }
+
+      .badge {
+        display: inline-flex;
+        align-items: center; gap: 6px;
+        background: rgba(244, 98, 15, 0.08);
+        border: 1px solid rgba(244, 98, 15, 0.3);
+        border-radius: 20px;
+        padding: 5px 14px;
+        font-size: 13px; font-weight: 500;
+        color: var(--accent);
+      }
+      .badge-orange {
+        background: rgba(255, 107, 53, 0.1);
+        border-color: rgba(255, 107, 53, 0.3);
+        color: var(--accent2);
+      }
+      .badge-purple {
+        background: rgba(26, 115, 232, 0.1);
+        border-color: rgba(26, 115, 232, 0.3);
+        color: #60a5fa;
+      }
+
+      .crisp-flow { display: flex; gap: 0; margin-top: 8px; }
+      .crisp-step {
+        flex: 1;
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        padding: 20px 16px;
+        position: relative;
+        text-align: center;
+      }
+      .crisp-step:first-child { border-radius: 12px 0 0 12px; }
+      .crisp-step:last-child  { border-radius: 0 12px 12px 0; }
+      .crisp-step:not(:last-child)::after {
+        content: "";
+        position: absolute;
+        right: -12px; top: 50%;
+        transform: translateY(-50%);
+        width: 0; height: 0;
+        border-left: 12px solid var(--card-bg);
+        border-top: 22px solid transparent;
+        border-bottom: 22px solid transparent;
+        z-index: 2;
+      }
+      .crisp-step:not(:last-child)::before {
+        content: "";
+        position: absolute;
+        right: -13px; top: 50%;
+        transform: translateY(-50%);
+        width: 0; height: 0;
+        border-left: 13px solid rgba(0, 194, 255, 0.2);
+        border-top: 23px solid transparent;
+        border-bottom: 23px solid transparent;
+        z-index: 1;
+      }
+      .crisp-step.active-step {
+        border-color: var(--accent);
+        background: rgba(244, 98, 15, 0.08);
+      }
+      .crisp-num {
+        font-family: "Syne", sans-serif;
+        font-size: 28px; font-weight: 800;
+        color: var(--accent); opacity: 0.4;
+        line-height: 1;
+      }
+      .crisp-name {
+        font-family: "Syne", sans-serif;
+        font-size: 11px; font-weight: 700;
+        letter-spacing: 0.5px;
+        margin-top: 6px; line-height: 1.3;
+      }
+
+      .data-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+      .data-table th {
+        background: rgba(244, 98, 15, 0.1);
+        color: var(--accent);
+        font-family: "Syne", sans-serif;
+        font-size: 12px; font-weight: 700;
+        letter-spacing: 1px; text-transform: uppercase;
+        padding: 12px 16px; text-align: left;
+        border-bottom: 1px solid var(--border);
+      }
+      .data-table td {
+        padding: 12px 16px;
+        border-bottom: 1px solid rgba(0, 194, 255, 0.05);
+        color: #cbd5e1;
+      }
+      .data-table tr:last-child td { border-bottom: none; }
+      .data-table tr:hover td { background: rgba(244, 98, 15, 0.03); }
+
+      .icon-circle {
+        width: 44px; height: 44px;
+        border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 20px; flex-shrink: 0;
+        margin-bottom: 12px;
+      }
+      .ic-blue   { background: rgba(244, 98, 15, 0.12); }
+      .ic-orange { background: rgba(255, 107, 53, 0.12); }
+      .ic-purple { background: rgba(26, 115, 232, 0.12); }
+      .ic-green  { background: rgba(16, 185, 129, 0.12); }
+
+      .split { display: flex; gap: 40px; align-items: flex-start; }
+      .split-left  { flex: 1.2; }
+      .split-right { flex: 1; }
+
+      .pill {
+        display: inline-flex; gap: 6px; align-items: center;
+        background: rgba(244, 98, 15, 0.07);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 6px 12px;
+        font-size: 13px; margin: 4px;
+      }
+
+      .progress-bar {
+        background: rgba(244, 98, 15, 0.1);
+        border-radius: 4px; height: 6px;
+        margin-top: 8px;
+      }
+      .progress-fill {
+        height: 100%; border-radius: 4px;
+        background: linear-gradient(90deg, var(--accent), var(--accent2));
+      }
+
+      .highlight-box {
+        background: linear-gradient(135deg, rgba(244, 98, 15, 0.08), rgba(124, 58, 237, 0.08));
+        border: 1px solid rgba(244, 98, 15, 0.3);
+        border-radius: 12px;
+        padding: 20px 24px;
+      }
+
+      .step-item {
+        display: flex; gap: 16px; align-items: flex-start;
+        padding: 14px 0;
+        border-bottom: 1px solid rgba(244, 98, 15, 0.06);
+      }
+      .step-item:last-child { border-bottom: none; }
+      .step-num-circle {
+        width: 32px; height: 32px;
+        border-radius: 50%;
+        background: rgba(244, 98, 15, 0.12);
+        border: 1px solid var(--accent);
+        display: flex; align-items: center; justify-content: center;
+        font-family: "Syne", sans-serif;
+        font-size: 14px; font-weight: 800;
+        color: var(--accent); flex-shrink: 0;
+      }
+
+      .thank-you {
+        font-family: "Syne", sans-serif;
+        font-size: 80px; font-weight: 800;
+        background: linear-gradient(135deg, var(--accent), var(--accent2));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        line-height: 1;
+      }
+
+      .color-accent  { color: var(--accent); }
+      .color-orange  { color: var(--accent2); }
+      .color-purple  { color: #60a5fa; }
+      .color-muted   { color: var(--muted); }
+      .fw-700 { font-weight: 700; }
+      .mb-4  { margin-bottom: 4px; }
+      .mb-8  { margin-bottom: 8px; }
+      .mb-12 { margin-bottom: 12px; }
+      .mb-16 { margin-bottom: 16px; }
+      .mb-24 { margin-bottom: 24px; }
+      .mb-32 { margin-bottom: 32px; }
+      .mt-auto { margin-top: auto; }
+      .fs-14 { font-size: 14px; }
+      .fs-13 { font-size: 13px; }
+
+      .slide-bg-glow {
+        position: absolute; inset: 0;
+        background:
+          radial-gradient(ellipse 70% 55% at 85% 15%, rgba(244, 98, 15, 0.07) 0%, transparent 60%),
+          radial-gradient(ellipse 40% 40% at 15% 85%, rgba(244, 98, 15, 0.04) 0%, transparent 60%);
+        pointer-events: none; z-index: 0;
+      }
+      .slide-bottom-bar {
+        position: absolute;
+        bottom: 0; left: 0; right: 0;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, rgba(244, 98, 15, 0.3), transparent);
+        z-index: 10;
+      }
+
+      @keyframes fadeUp {
+        from { opacity: 0; transform: translateY(16px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+      .slide.active > * { animation: fadeUp 0.5s ease both; }
+      .slide.active > *:nth-child(2) { animation-delay: 0.05s; }
+      .slide.active > *:nth-child(3) { animation-delay: 0.10s; }
+      .slide.active > *:nth-child(4) { animation-delay: 0.15s; }
+      .slide.active > *:nth-child(5) { animation-delay: 0.20s; }
+
+      .arch-svg-container {
+        flex: 1;
+        overflow: auto;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: #ffffff;
+        padding: 8px;
+      }
+      .arch-svg-container img {
+        width: auto; height: 100%;
+        min-height: 400px; display: block;
+      }
+
+      /* Screenshot placeholder */
+      .img-placeholder {
+        height: 100%;
+        border: 2px dashed rgba(244,98,15,0.35);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--muted);
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="deck">
+
+      <!-- ========== SLIDE 1: TITLE ========== -->
+      <div class="slide active" id="s1">
+        <div class="slide-bg-glow"></div>
+        <div class="slide-bottom-bar"></div>
+        <div class="logo-bar"><div class="logo-dot"></div>CRISP-ML(Q) · DEEP LEARNING · COMPUTER VISION</div>
+        <div style="flex:1; display:flex; flex-direction:column; justify-content:center;">
+          <div class="tag">AI/ML Project</div>
+          <h1 class="slide-title" style="font-size:44px; max-width:800px">
+            AI-Based Road Crack Detection<br />& Severity Assessment System
+          </h1>
+          <div class="accent-line"></div>
+          <p class="subtitle" style="max-width:600px; margin-bottom:40px">
+            Automated pavement analysis using YOLOv8 segmentation and U-Net for
+            early detection, classification, and severity scoring of road surface defects.
+          </p>
+          <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:40px;">
+            <div class="badge">🔍 YOLOv8 Segmentation</div>
+            <div class="badge">🧠 U-Net Architecture</div>
+            <div class="badge">📊 CRISP-ML(Q)</div>
+            <div class="badge badge-orange">⚡ Real-time Detection</div>
+          </div>
+          <div style="display:flex; gap:16px; align-items:stretch; flex-wrap:wrap;">
+            <div class="card" style="max-width:300px; border-color:rgba(0,194,255,0.3)">
+              <div style="font-size:12px; color:var(--muted); margin-bottom:6px; font-family:'Syne',sans-serif; letter-spacing:1px; text-transform:uppercase;">Presented By</div>
+              <div style="font-family:'Syne',sans-serif; font-size:18px; font-weight:700;">Anshuman Acharya</div>
+              <div style="font-size:13px; color:var(--accent); margin-top:4px;">🔗 linkedin.com/in/anshuman-a-acharya</div>
+            </div>
+            <div class="card" style="border-color:rgba(244,98,15,0.3); background:rgba(244,98,15,0.03); display:flex; align-items:center; justify-content:center; padding:18px 28px;">
+              <img src="logo.png" alt="Logo" style="height:46px; object-fit:contain;" />
+            </div>
+          </div>
+        </div>
+        <div class="slide-num">01 / 19</div>
+      </div>
+
+      <!-- ========== SLIDE 2: CONTENTS ========== -->
+      <div class="slide" id="s2">
+        <div class="slide-bg-glow"></div>
+        <div class="slide-bottom-bar"></div>
+        <div class="logo-bar"><div class="logo-dot"></div>OVERVIEW</div>
+        <div class="tag">📋 Agenda</div>
+        <h2 class="section-title">Contents</h2>
+        <div class="grid-3" style="flex:1;">
+          <div class="card card-accent">
+            <div class="icon-circle ic-blue">📌</div>
+            <h3 class="card-title">01 · Project Understanding</h3>
+            <ul class="bullet-list">
+              <li>Problem Statement</li>
+              <li>Project Objective</li>
+              <li>CRISP-ML(Q) Methodology</li>
+            </ul>
+          </div>
+          <div class="card card-accent">
+            <div class="icon-circle ic-orange">🔄</div>
+            <h3 class="card-title">02 · Development Process</h3>
+            <ul class="bullet-list">
+              <li>Project Architecture</li>
+              <li>Dataset & Annotation</li>
+              <li>Preprocessing</li>
+            </ul>
+          </div>
+          <div class="card card-accent">
+            <div class="icon-circle ic-purple">🤖</div>
+            <h3 class="card-title">03 · Modeling & Results</h3>
+            <ul class="bullet-list">
+              <li>YOLOv8 & U-Net</li>
+              <li>Evaluation & Comparison</li>
+              <li>Deployment & Output</li>
+            </ul>
+          </div>
+        </div>
+        <div class="slide-num">02 / 19</div>
+      </div>
+
+      <!-- ========== SLIDE 3: BUSINESS PROBLEM ========== -->
+      <div class="slide" id="s3">
+        <div class="slide-bg-glow"></div>
+        <div class="slide-bottom-bar"></div>
+        <div class="logo-bar"><div class="logo-dot"></div>BUSINESS UNDERSTANDING</div>
+        <div class="tag">❗ Problem Statement</div>
+        <div class="split" style="flex:1;">
+          <div class="split-left">
+            <h2 class="section-title" style="margin-bottom:16px;">Business Problem</h2>
+            <p style="color:var(--muted); font-size:14px; margin-bottom:20px; line-height:1.6;">
+              <strong style="color:#cbd5e1;">Client: Municipal Road Authority</strong><br />
+              Road surface cracks — longitudinal, transverse, alligator, and edge cracks — are often
+              detected late through manual inspections or public complaints.
+            </p>
+            <div class="card card-accent2" style="margin-bottom:16px;">
+              <h3 class="card-title color-orange">Consequences of Late Detection</h3>
+              <ul class="bullet-list">
+                <li>Progressive pavement deterioration</li>
+                <li>Water infiltration into road layers</li>
+                <li>Structural weakening of pavements</li>
+                <li>High full-depth repair costs</li>
+              </ul>
+            </div>
+            <div class="card" style="background:rgba(255,107,53,0.06); border-color:rgba(255,107,53,0.2);">
+              <div class="fs-14" style="color:#cbd5e1; line-height:1.6; margin-bottom:12px;">
+                ⚠️ <strong>Inconsistent severity assessment</strong> further results in poor prioritization of maintenance activities.
+              </div>
+              <div class="highlight-box">
+                <div class="fs-13 color-muted">
+                  The project focuses more on <strong style="color:var(--accent);">accurate crack region highlighting</strong>
+                  rather than only class prediction.
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="split-right" style="display:flex; flex-direction:column; gap:16px;">
+            <div class="card card-accent">
+              <h3 class="card-title">Crack Types Identified</h3>
+              <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;">
+                <div class="pill">🔴 Alligator</div>
+                <div class="pill">↔️ Transverse</div>
+                <div class="pill">↕️ Longitudinal</div>
+                <div class="pill">📐 Edge Cracks</div>
+              </div>
+            </div>
+            <div class="card card-accent-b">
+              <h3 class="card-title">Severity Levels</h3>
+              <div style="margin-top:12px;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                  <span class="fs-13">Low</span><span class="fs-13 color-accent">Safe</span>
+                </div>
+                <div class="progress-bar">
+                  <div class="progress-fill" style="width:30%; background:rgba(16,185,129,0.8);"></div>
+                </div>
+                <div style="display:flex; justify-content:space-between; margin:10px 0 6px;">
+                  <span class="fs-13">Moderate</span><span class="fs-13" style="color:#f59e0b;">Monitor</span>
+                </div>
+                <div class="progress-bar">
+                  <div class="progress-fill" style="width:60%; background:linear-gradient(90deg,#f59e0b,#ff6b35);"></div>
+                </div>
+                <div style="display:flex; justify-content:space-between; margin:10px 0 6px;">
+                  <span class="fs-13">Severe</span><span class="fs-13 color-orange">Critical</span>
+                </div>
+                <div class="progress-bar">
+                  <div class="progress-fill" style="width:90%;"></div>
+                </div>
+              </div>
+            </div>
+            <div class="highlight-box">
+              <div class="fs-13 color-muted">
+                High-risk patterns such as alligator cracks indicate structural failure risk and require immediate intervention.
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="slide-num">03 / 19</div>
+      </div>
+
+      <!-- ========== SLIDE 4: BUSINESS OBJECTIVE & CONSTRAINTS ========== -->
+      <div class="slide" id="s4">
+        <div class="slide-bg-glow"></div>
+        <div class="slide-bottom-bar"></div>
+        <div class="logo-bar"><div class="logo-dot"></div>BUSINESS UNDERSTANDING</div>
+        <div class="tag">🎯 Objective & Constraints</div>
+        <h2 class="section-title">Business Objective</h2>
+        <div class="highlight-box" style="margin-bottom:28px;">
+          <div style="font-family:'Syne',sans-serif; font-size:18px; font-weight:700; margin-bottom:6px;">
+            Maximize early and accurate detection and severity classification of road cracks using AI models.
+          </div>
+          <div class="fs-13 color-muted">Shifting from reactive to preventive maintenance through intelligent automation.</div>
+        </div>
+        <div class="grid-2" style="flex:1;">
+          <div>
+            <div class="card card-accent2" style="margin-bottom:16px;">
+              <h3 class="card-title color-orange">⚠️ Business Constraints</h3>
+              <ul class="bullet-list" style="margin-top:8px;">
+                <li>Minimize inspection time</li>
+                <li>Reduce operational cost</li>
+                <li>Maintain high detection accuracy</li>
+                <li>Identify high-risk crack types (alligator cracks)</li>
+              </ul>
+            </div>
+          </div>
+          <div>
+            <div style="font-family:'Syne',sans-serif; font-size:13px; font-weight:700; color:var(--muted); letter-spacing:1px; text-transform:uppercase; margin-bottom:14px;">
+              ✅ Success Criteria
+            </div>
+            <div class="card card-accent" style="margin-bottom:12px;">
+              <div class="fs-13 color-muted mb-4">Business Success Criteria</div>
+              <div class="stat-big" style="font-size:36px;">≥ 25%</div>
+              <div class="stat-label">Reduction in major resurfacing interventions by shifting from reactive to preventive crack sealing programs</div>
+            </div>
+            <div class="grid-2" style="gap:12px;">
+              <div class="card card-accent-b">
+                <div class="fs-13 color-muted mb-4">ML Criteria</div>
+                <div class="stat-big" style="font-size:30px;">≥ 85%</div>
+                <div class="stat-label">Precision for crack detection & severity classification</div>
+              </div>
+              <div class="card" style="border-color:rgba(16,185,129,0.3);">
+                <div class="fs-13 color-muted mb-4">Economic Criteria</div>
+                <div class="stat-big" style="font-size:30px; color:#10b981;">15–25%</div>
+                <div class="stat-label">Reduction in per-km rehabilitation cost through early treatment</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="slide-num">04 / 19</div>
+      </div>
+
+      <!-- ========== SLIDE 5: CRISP-ML(Q) ========== -->
+      <div class="slide" id="s5">
+        <div class="slide-bg-glow"></div>
+        <div class="slide-bottom-bar"></div>
+        <div class="logo-bar"><div class="logo-dot"></div>METHODOLOGY</div>
+        <div class="tag">🔁 Framework</div>
+        <h2 class="section-title">CRISP-ML(Q) Methodology</h2>
+        <p class="subtitle" style="margin-bottom:28px; font-size:14px;">
+          There are <strong class="color-accent">six stages</strong> of CRISP-ML(Q) Methodology applied in this project.
+        </p>
+        <div class="crisp-flow" style="margin-bottom:28px;">
+          <div class="crisp-step active-step"><div class="crisp-num">01</div><div class="crisp-name">Business & Data Understanding</div></div>
+          <div class="crisp-step"><div class="crisp-num">02</div><div class="crisp-name">Data Preparation</div></div>
+          <div class="crisp-step"><div class="crisp-num">03</div><div class="crisp-name">Model Building</div></div>
+          <div class="crisp-step"><div class="crisp-num">04</div><div class="crisp-name">Model Evaluation</div></div>
+          <div class="crisp-step"><div class="crisp-num">05</div><div class="crisp-name">Model Deployment</div></div>
+          <div class="crisp-step"><div class="crisp-num">06</div><div class="crisp-name">Monitoring & Maintenance</div></div>
+        </div>
+        <div class="grid-3" style="gap:14px;">
+          <div class="card card-accent">
+            <h3 class="card-title" style="font-size:14px;">📌 Stage 1: Business & Data Understanding</h3>
+            <ul class="bullet-list" style="font-size:13px;">
+              <li>Municipal Road Authority problem definition</li>
+              <li>Identify crack types (longitudinal, transverse, alligator)</li>
+              <li>Define severity levels (Low, Moderate, Severe)</li>
+              <li>ML objective: Road crack segmentation using deep learning</li>
+            </ul>
+          </div>
+          <div class="card card-accent">
+            <h3 class="card-title" style="font-size:14px;">🧹 Stage 2: Data Preparation</h3>
+            <ul class="bullet-list" style="font-size:13px;">
+              <li>Kaggle + GitHub + research datasets (~12,000 images)</li>
+              <li>Label Studio / Roboflow annotation</li>
+              <li>Image resizing to 640×640</li>
+              <li>YOLO format conversion, 70/20/10 split</li>
+            </ul>
+          </div>
+          <div class="card card-accent">
+            <h3 class="card-title" style="font-size:14px;">🤖 Stage 3: Model Building</h3>
+            <ul class="bullet-list" style="font-size:13px;">
+              <li>YOLOv8 Segmentation (real-time detection)</li>
+              <li>U-Net (pixel-level accuracy)</li>
+              <li>Transfer learning with pretrained weights</li>
+              <li>PyTorch training pipeline</li>
+            </ul>
+          </div>
+          <div class="card card-accent">
+            <h3 class="card-title" style="font-size:14px;">📈 Stage 4: Model Evaluation</h3>
+            <ul class="bullet-list" style="font-size:13px;">
+              <li>mAP (Mean Average Precision)</li>
+              <li>IoU (Intersection over Union)</li>
+              <li>Precision & Recall metrics</li>
+              <li>U-Net selected as best model</li>
+            </ul>
+          </div>
+          <div class="card card-accent">
+            <h3 class="card-title" style="font-size:14px;">🚀 Stage 5: Model Deployment</h3>
+            <ul class="bullet-list" style="font-size:13px;">
+              <li>Save trained model (.pt file)</li>
+              <li>Flask API deployment</li>
+              <li>Streamlit interface</li>
+              <li>Real-time segmentation output</li>
+            </ul>
+          </div>
+          <div class="card card-accent">
+            <h3 class="card-title" style="font-size:14px;">🔍 Stage 6: Monitoring & Maintenance</h3>
+            <ul class="bullet-list" style="font-size:13px;">
+              <li>Ongoing performance monitoring</li>
+              <li>Model drift detection</li>
+              <li>Periodic retraining pipeline</li>
+              <li>Feedback loop from inspectors</li>
+            </ul>
+          </div>
+        </div>
+        <div class="slide-num">05 / 19</div>
+      </div>
+
+      <!-- ========== SLIDE 6: TECHNICAL STACK ========== -->
+      <div class="slide" id="s6">
+        <div class="slide-bg-glow"></div>
+        <div class="slide-bottom-bar"></div>
+        <div class="logo-bar"><div class="logo-dot"></div>TECHNICAL STACK</div>
+        <div class="tag">🛠️ Tools & Technologies</div>
+        <h2 class="section-title">Technical Stack</h2>
+        <div class="grid-2" style="flex:1; gap:24px;">
+          <div>
+            <div style="font-family:'Syne',sans-serif; font-size:13px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--muted); margin-bottom:14px;">Software Stack</div>
+            <div class="grid-2" style="gap:12px;">
+              <div class="card card-accent">
+                <div class="icon-circle ic-blue">🐍</div>
+                <h3 class="card-title">Python</h3>
+                <div class="fs-13 color-muted">Core language for ML pipeline and data processing</div>
+              </div>
+              <div class="card card-accent">
+                <div class="icon-circle ic-orange">🔦</div>
+                <h3 class="card-title">PyTorch</h3>
+                <div class="fs-13 color-muted">Deep learning framework for model training</div>
+              </div>
+              <div class="card card-accent-b">
+                <div class="icon-circle ic-purple">⚡</div>
+                <h3 class="card-title">YOLOv8</h3>
+                <div class="fs-13 color-muted">Ultralytics — real-time object detection & segmentation</div>
+              </div>
+              <div class="card card-accent">
+                <div class="icon-circle ic-green">U</div>
+                <h3 class="card-title">U-Net</h3>
+                <div class="fs-13 color-muted">For pixel-level crack segmentation</div>
+              </div>
+            </div>
+            <div style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;">
+              <div class="pill">NumPy</div><div class="pill">OpenCV</div><div class="pill">Pandas</div>
+              <div class="pill">Label Studio</div><div class="pill">Roboflow</div>
+              <div class="pill">Flask</div><div class="pill">Streamlit</div>
+            </div>
+          </div>
+          <div>
+            <div style="font-family:'Syne',sans-serif; font-size:13px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--muted); margin-bottom:14px;">💻 System Requirements</div>
+            <div class="card card-accent" style="margin-bottom:14px;">
+              <h3 class="card-title">Hardware</h3>
+              <table style="width:100%; font-size:13px; margin-top:8px;">
+                <tr><td style="color:var(--muted); padding:4px 0;">CPU</td><td style="color:#cbd5e1;">AMD Ryzen 5 4000 Series</td></tr>
+                <tr><td style="color:var(--muted); padding:4px 0;">GPU</td><td style="color:#cbd5e1;">NVIDIA GTX 1650</td></tr>
+                <tr><td style="color:var(--muted); padding:4px 0;">RAM</td><td style="color:#cbd5e1;">8GB / 16GB Recommended</td></tr>
+                <tr><td style="color:var(--muted); padding:4px 0;">Storage</td><td style="color:#cbd5e1;">20GB+ Available</td></tr>
+              </table>
+            </div>
+            <div class="card card-accent-b">
+              <h3 class="card-title">Software</h3>
+              <table style="width:100%; font-size:13px; margin-top:8px;">
+                <tr><td style="color:var(--muted); padding:4px 0;">OS</td><td style="color:#cbd5e1;">Windows 10/11</td></tr>
+                <tr><td style="color:var(--muted); padding:4px 0;">Python</td><td style="color:#cbd5e1;">3.8+</td></tr>
+                <tr><td style="color:var(--muted); padding:4px 0;">Key libs</td><td style="color:#cbd5e1;">torch · ultralytics · opencv-python · matplotlib</td></tr>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div class="slide-num">06 / 19</div>
+      </div>
+
+      <!-- ========== SLIDE 7: PROJECT ARCHITECTURE ========== -->
+      <div class="slide" id="s7" style="padding:36px 40px 52px;">
+        <div class="slide-bg-glow"></div>
+        <div class="slide-bottom-bar"></div>
+        <div class="logo-bar"><div class="logo-dot"></div>CRISP-ML(Q) · ARCHITECTURE</div>
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; margin-top:10px; position:relative; z-index:2;">
+          <h2 class="section-title" style="margin-bottom:0; font-size:26px;">Project Architecture</h2>
+        </div>
+        <div class="arch-svg-container">
+          <img src="Project Architeture.drawio.svg" alt="Project Architecture" style="width:auto; height:100%; min-height:400px; display:block;" />
+        </div>
+        <div class="slide-num">07 / 19</div>
+      </div>
+
+      <!-- ========== SLIDE 8: DATA COLLECTION ========== -->
+      <div class="slide" id="s8">
+        <div class="slide-bg-glow"></div>
+        <div class="slide-bottom-bar"></div>
+        <div class="logo-bar"><div class="logo-dot"></div>CRISP-ML(Q) · STAGE 2</div>
+        <div class="tag">📁 Data Understanding</div>
+        <h2 class="section-title">Data Collection & Understanding</h2>
+        <div style="flex:1; display:flex; flex-direction:column; gap:20px;">
+          <div class="grid-2" style="gap:24px;">
+            <div class="card card-accent">
+              <h3 class="card-title">📦 Data Sources</h3>
+              <div class="step-item">
+                <div class="step-num-circle">1</div>
+                <div><div class="fw-700 fs-14">Kaggle Dataset</div><div class="fs-13 color-muted">12,000 road crack images with various conditions</div></div>
+              </div>
+              <div class="step-item">
+                <div class="step-num-circle">2</div>
+                <div><div class="fw-700 fs-14">Research Paper Datasets</div><div class="fs-13 color-muted">Academic benchmark datasets for crack segmentation</div></div>
+              </div>
+              <div class="step-item">
+                <div class="step-num-circle">3</div>
+                <div><div class="fw-700 fs-14">GitHub Datasets</div><div class="fs-13 color-muted">Open-source annotated pavement images</div></div>
+              </div>
+              <div class="step-item">
+                <div class="step-num-circle">4</div>
+                <div><div class="fw-700 fs-14">Custom Annotated Data</div><div class="fs-13 color-muted">Manually annotated using Label Studio & Roboflow</div></div>
+              </div>
+            </div>
+            <div class="card card-accent2">
+              <h3 class="card-title color-orange">📌 Data Characteristics</h3>
+              <ul class="bullet-list" style="font-size:13px;">
+                <li>Image-based dataset (road crack images)</li>
+                <li>Various lighting and environmental conditions</li>
+                <li>Vehicle-mounted camera, UAV drone, mobile app</li>
+                <li>Class imbalance present across crack types</li>
+              </ul>
+            </div>
+          </div>
+          <div style="display:flex; gap:16px; justify-content:center;">
+            <div class="card" style="text-align:center; padding:20px; min-width:200px;">
+              <div class="stat-big" style="font-size:48px;">12K</div>
+              <div class="stat-label">Total Images</div>
+            </div>
+            <div class="card" style="text-align:center; padding:20px; min-width:200px;">
+              <div class="stat-big" style="font-size:48px;">4</div>
+              <div class="stat-label">Crack Classes</div>
+            </div>
+            <div class="card" style="text-align:center; padding:20px; min-width:200px;">
+              <div class="stat-big" style="font-size:48px;">640</div>
+              <div class="stat-label">Image Size (px)</div>
+            </div>
+          </div>
+        </div>
+        <div class="slide-num">08 / 19</div>
+      </div>
+
+      <!-- ========== SLIDE 9: DATA DICTIONARY ========== -->
+      <div class="slide" id="s9">
+        <div class="slide-bg-glow"></div>
+        <div class="slide-bottom-bar"></div>
+        <div class="logo-bar"><div class="logo-dot"></div>CRISP-ML(Q) · STAGE 2</div>
+        <div class="tag">📖 Data Dictionary</div>
+        <h2 class="section-title">Data Dictionary</h2>
+        <div style="flex:1; display:flex; flex-direction:column; gap:20px;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Feature</th><th>Type</th><th>Description</th><th>Example Values</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>Image</strong></td><td><span class="badge" style="font-size:11px;padding:2px 8px;">Input</span></td><td>Road surface photograph captured by camera/drone</td><td>JPG/PNG, 640×640px</td></tr>
+              <tr><td><strong>Mask</strong></td><td><span class="badge" style="font-size:11px;padding:2px 8px;">Annotation</span></td><td>Pixel-level segmentation annotation overlay marking crack regions</td><td>Binary mask image</td></tr>
+              <tr><td><strong>Class Label</strong></td><td><span class="badge" style="font-size:11px;padding:2px 8px;">Target</span></td><td>Type of crack identified in the image</td><td>Longitudinal, Transverse, Alligator, Edge</td></tr>
+              <tr><td><strong>Severity</strong></td><td><span class="badge" style="font-size:11px;padding:2px 8px;">Output</span></td><td>Severity level of the detected crack</td><td>Low, Moderate, Severe</td></tr>
+              <tr><td><strong>Bounding Box</strong></td><td><span class="badge" style="font-size:11px;padding:2px 8px;">Annotation</span></td><td>YOLO format coordinates of crack location</td><td>[x_center, y_center, w, h]</td></tr>
+              <tr><td><strong>Crack Area</strong></td><td><span class="badge" style="font-size:11px;padding:2px 8px;">Derived</span></td><td>Pixel area of the segmented crack region</td><td>Numeric (pixels²)</td></tr>
+              <tr><td><strong>Crack Length/Width</strong></td><td><span class="badge" style="font-size:11px;padding:2px 8px;">Derived</span></td><td>Estimated physical dimensions of the crack</td><td>Numeric (meters)</td></tr>
+            </tbody>
+          </table>
+          <div class="highlight-box">
+            <div class="fs-13" style="color:#cbd5e1; line-height:1.6;">
+              📌 Annotations created using <strong style="color:var(--accent);">Label Studio</strong> and
+              <strong style="color:var(--accent);">Roboflow</strong>. All images exported in YOLO segmentation format for model training.
+            </div>
+          </div>
+        </div>
+        <div class="slide-num">09 / 19</div>
+      </div>
+
+      <!-- ========== SLIDE 10: EDA & PREPROCESSING ========== -->
+      <div class="slide" id="s10">
+        <div class="slide-bg-glow"></div>
+        <div class="slide-bottom-bar"></div>
+        <div class="logo-bar"><div class="logo-dot"></div>CRISP-ML(Q) · STAGE 2</div>
+        <div class="tag">🔍 Exploratory Data Analysis</div>
+        <h2 class="section-title">EDA & Data Preprocessing</h2>
+        <div class="grid-2" style="flex:1; gap:24px;">
+          <div style="display:flex; flex-direction:column; gap:14px;">
+            <div class="card card-accent">
+              <h3 class="card-title">🔍 Exploratory Data Analysis</h3>
+              <p class="fs-13 color-muted" style="margin-bottom:12px; line-height:1.6;">EDA is used for seeing what the data can tell us before the modeling task.</p>
+              <div style="font-family:'Syne',sans-serif; font-size:12px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--muted); margin-bottom:8px;">Key Observations</div>
+              <ul class="bullet-list" style="font-size:13px;">
+                <li>Class imbalance present across crack types</li>
+                <li>Variation in crack shapes and orientations</li>
+                <li>Noise and lighting variation across images</li>
+              </ul>
+            </div>
+            <div class="card card-accent2">
+              <h3 class="card-title color-orange">⚠️ Missing Values Observation</h3>
+              <ul class="bullet-list" style="font-size:13px;">
+                <li>No missing images detected in dataset</li>
+                <li>Some annotation inconsistencies handled during preprocessing</li>
+              </ul>
+            </div>
+            <div class="card" style="border-color:rgba(16,185,129,0.3);">
+              <h3 class="card-title" style="color:#10b981;">📊 Data Visualization</h3>
+              <ul class="bullet-list" style="font-size:13px;">
+                <li>Crack type distribution charts</li>
+                <li>Sample images per class</li>
+                <li>Segmentation mask overlays</li>
+              </ul>
+            </div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:14px;">
+            <div class="card card-accent-b">
+              <h3 class="card-title">🧹 Data Preprocessing</h3>
+              <div class="step-item">
+                <div class="step-num-circle">1</div>
+                <div><div class="fw-700 fs-14">Image Resizing</div><div class="fs-13 color-muted">All images standardized to 640×640 pixels</div></div>
+              </div>
+              <div class="step-item">
+                <div class="step-num-circle">2</div>
+                <div><div class="fw-700 fs-14">Format Conversion</div><div class="fs-13 color-muted">Converted annotations to YOLO format</div></div>
+              </div>
+              <div class="step-item">
+                <div class="step-num-circle">3</div>
+                <div><div class="fw-700 fs-14">Data Cleaning</div><div class="fs-13 color-muted">Removed corrupted images and fixed inconsistencies</div></div>
+              </div>
+            </div>
+            <div class="card card-accent">
+              <h3 class="card-title">🔄 Data Splitting</h3>
+              <div style="margin-top:12px;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                  <span class="fs-14 fw-700 color-accent">Training Set</span><span class="fs-14 color-accent fw-700">70%</span>
+                </div>
+                <div class="progress-bar" style="margin-bottom:12px;"><div class="progress-fill" style="width:70%;"></div></div>
+                <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                  <span class="fs-14">Validation Set</span><span class="fs-14">20%</span>
+                </div>
+                <div class="progress-bar" style="margin-bottom:12px;"><div class="progress-fill" style="width:20%; background:#1a73e8;"></div></div>
+                <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                  <span class="fs-14">Test Set</span><span class="fs-14">10%</span>
+                </div>
+                <div class="progress-bar"><div class="progress-fill" style="width:10%; background:var(--accent2);"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="slide-num">10 / 19</div>
+      </div>
+
+      <!-- ========== SLIDE 11: MODEL BUILDING ========== -->
+      <div class="slide" id="s11">
+        <div class="slide-bg-glow"></div>
+        <div class="slide-bottom-bar"></div>
+        <div class="logo-bar"><div class="logo-dot"></div>PROJECT IMPLEMENTATION</div>
+        <div class="tag">🤖 Model Building</div>
+        <h2 class="section-title">Model Building</h2>
+        <div class="grid-2" style="flex:1; gap:24px;">
+          <div>
+            <div class="card" style="border-color:rgba(0,194,255,0.4); background:rgba(244,98,15,0.04); margin-bottom:16px;">
+              <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px;">
+                <div class="icon-circle ic-blue" style="margin-bottom:0;">⚡</div>
+                <h3 class="card-title" style="font-size:18px; margin-bottom:0;">YOLOv8 Segmentation</h3>
+              </div>
+              <p class="fs-13 color-muted" style="margin-bottom:12px;">
+                Used <strong>YOLOv8 Segmentation</strong> to detect and segment crack regions from road images.
+                This model helps generate visible crack masks and is useful for practical crack localization.
+              </p>
+              <div class="grid-2" style="gap:10px; margin-bottom:12px;">
+                <div class="badge" style="justify-content:center; padding:8px;">Crack Segmentation</div>
+                <div class="badge" style="justify-content:center; padding:8px;">Faster Output</div>
+                <div class="badge" style="justify-content:center; padding:8px;">Practical Detection</div>
+                <div class="badge" style="justify-content:center; padding:8px;">Visual Prediction</div>
+              </div>
+              <div style="font-family:'Syne',sans-serif; font-size:12px; font-weight:700; text-transform:uppercase; color:var(--muted); margin-bottom:8px;">Pipeline</div>
+              <div style="display:flex; gap:6px; align-items:center; font-size:12px;">
+                <div style="background:rgba(244,98,15,0.1); border:1px solid var(--border); border-radius:4px; padding:6px 8px; text-align:center; flex:1;">
+                  <div style="color:var(--accent); font-weight:700;">Train</div><div class="color-muted">Segmentation Model</div>
+                </div>
+                <div style="color:var(--muted);">→</div>
+                <div style="background:rgba(244,98,15,0.1); border:1px solid var(--border); border-radius:4px; padding:6px 8px; text-align:center; flex:1;">
+                  <div style="color:var(--accent); font-weight:700;">Predict</div><div class="color-muted">Crack Region</div>
+                </div>
+                <div style="color:var(--muted);">→</div>
+                <div style="background:rgba(244,98,15,0.1); border:1px solid var(--border); border-radius:4px; padding:6px 8px; text-align:center; flex:1;">
+                  <div style="color:var(--accent); font-weight:700;">Output</div><div class="color-muted">Highlighted Mask</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="card" style="border-color:rgba(124,58,237,0.4); background:rgba(124,58,237,0.04); margin-bottom:16px;">
+              <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px;">
+                <div class="icon-circle ic-purple" style="margin-bottom:0;">🧠</div>
+                <h3 class="card-title" style="font-size:18px; margin-bottom:0;">U-Net Model</h3>
+              </div>
+              <p class="fs-13 color-muted" style="margin-bottom:12px;">
+                Also explored <strong>U-Net</strong> for crack segmentation to compare how well it identifies crack
+                pixels and generates cleaner segmented crack areas.
+              </p>
+              <div class="grid-2" style="gap:10px; margin-bottom:12px;">
+                <div class="badge badge-purple" style="justify-content:center; padding:8px;">Pixel-Level Output</div>
+                <div class="badge badge-purple" style="justify-content:center; padding:8px;">Crack Area Focus</div>
+                <div class="badge badge-purple" style="justify-content:center; padding:8px;">Segmentation Study</div>
+                <div class="badge badge-purple" style="justify-content:center; padding:8px;">Model Comparison</div>
+              </div>
+              <div style="font-family:'Syne',sans-serif; font-size:12px; font-weight:700; text-transform:uppercase; color:var(--muted); margin-bottom:8px;">Pipeline</div>
+              <div style="display:flex; gap:6px; align-items:center; font-size:12px;">
+                <div style="background:rgba(124,58,237,0.1); border:1px solid rgba(124,58,237,0.3); border-radius:4px; padding:6px 8px; text-align:center; flex:1;">
+                  <div style="color:#a78bfa; font-weight:700;">Input</div><div class="color-muted">Road Image</div>
+                </div>
+                <div style="color:var(--muted);">→</div>
+                <div style="background:rgba(124,58,237,0.1); border:1px solid rgba(124,58,237,0.3); border-radius:4px; padding:6px 8px; text-align:center; flex:1;">
+                  <div style="color:#a78bfa; font-weight:700;">Segment</div><div class="color-muted">Crack Pixels</div>
+                </div>
+                <div style="color:var(--muted);">→</div>
+                <div style="background:rgba(124,58,237,0.1); border:1px solid rgba(124,58,237,0.3); border-radius:4px; padding:6px 8px; text-align:center; flex:1;">
+                  <div style="color:#a78bfa; font-weight:700;">Compare</div><div class="color-muted">Prediction Quality</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card" style="border-color:rgba(244,98,15,0.3); background:rgba(244,98,15,0.03);">
+          <h3 class="card-title" style="margin-bottom:10px;">Why Both Models Were Used</h3>
+          <p class="fs-13 color-muted" style="line-height:1.7;">
+            Both <strong>YOLOv8 Segmentation</strong> and <strong>U-Net</strong> were explored to determine which model gives
+            better crack visibility, segmentation quality, and practical output. This comparison informed the final crack
+            highlighting and prediction workflow.
+          </p>
+          <br><br>
+        </div>
+        <div class="slide-num">11 / 19</div>
+      </div>
+
+      <!-- ========== SLIDE 12: MODEL EVALUATION ========== -->
+      <div class="slide" id="s12">
+        <div class="slide-bg-glow"></div>
+        <div class="slide-bottom-bar"></div>
+        <div class="logo-bar"><div class="logo-dot"></div>PROJECT TESTING & ANALYSIS</div>
+        <div class="tag">📈 Model Evaluation</div>
+        <h2 class="section-title">Model Evaluation</h2>
+        <div class="split" style="flex:1;">
+          <div class="split-left">
+            <div class="card card-accent" style="margin-bottom:16px;">
+              <h3 class="card-title">📊 Metrics & Evaluation Focus</h3>
+              <div class="step-item">
+                <div class="step-num-circle" style="font-size:11px;">Acc</div>
+                <div><div class="fw-700 fs-14">Pixel Accuracy</div><div class="fs-13 color-muted">Checked how correctly crack pixels were identified in the segmented output</div></div>
+              </div>
+              <div class="step-item">
+                <div class="step-num-circle" style="font-size:11px;">IoU</div>
+                <div><div class="fw-700 fs-14">Mean IoU</div><div class="fs-13 color-muted">Measured the overlap between predicted crack masks and actual crack regions</div></div>
+              </div>
+              <div class="step-item">
+                <div class="step-num-circle" style="font-size:11px;">Loss</div>
+                <div><div class="fw-700 fs-14">Validation Loss</div><div class="fs-13 color-muted">Monitored model learning behavior and segmentation consistency</div></div>
+              </div>
+            </div>
+            <div class="card card-accent2">
+              <h3 class="card-title color-orange">⚖️ YOLOv8 vs U-Net Comparison</h3>
+              <table class="data-table" style="margin-top:10px;">
+                <thead>
+                  <tr><th>Aspect</th><th>YOLOv8</th><th>U-Net</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td><strong>Prediction Style</strong></td><td>Fast segmentation output</td><td>Detailed pixel-level segmentation</td></tr>
+                  <tr><td><strong>Crack Region Precision</strong></td><td>Good</td><td>Better</td></tr>
+                  <tr><td><strong>Thin Crack Handling</strong></td><td>Moderate</td><td>More suitable</td></tr>
+                  <tr><td><strong>Final Output Quality</strong></td><td>Practical</td><td>Cleaner segmentation masks</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="split-right">
+            <div class="highlight-box" style="text-align:center; padding:32px; margin-bottom:16px;">
+              <div class="fs-13 color-muted mb-12">🏆 Final Model Selected</div>
+              <div class="stat-big" style="font-size:40px;">U-Net</div>
+              <div style="color:var(--muted); font-size:14px; margin-top:12px; line-height:1.6;">
+                After comparing both models, <strong class="color-accent">U-Net</strong> was selected because it provides
+                <strong class="color-accent">better crack region precision</strong>, cleaner segmentation masks,
+                and is more suitable for detailed crack analysis.
+              </div>
+            </div>
+            <div class="grid-2" style="gap:12px;">
+              <div class="card" style="text-align:center; padding:18px;">
+                <div class="stat-big" style="font-size:28px;">Filtered</div>
+                <div class="stat-label">Tiny false detections removed</div>
+              </div>
+              <div class="card" style="text-align:center; padding:18px;">
+                <div class="stat-big" style="font-size:28px; color:#10b981;">Improved</div>
+                <div class="stat-label">Crack visibility in output</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="slide-num">12 / 19</div>
+      </div>
+
+      <!-- ========== SLIDE 13: DEPLOYMENT ========== -->
+      <div class="slide" id="s13">
+        <div class="slide-bg-glow"></div>
+        <div class="slide-bottom-bar"></div>
+        <div class="logo-bar"><div class="logo-dot"></div>PROJECT IMPLEMENTATION · FINAL STAGE</div>
+        <div class="tag">🚀 Deployment</div>
+        <h2 class="section-title">Model Deployment Strategy</h2>
+        <div class="grid-2" style="flex:1; gap:24px;">
+          <div style="display:flex; flex-direction:column; gap:14px;">
+            <div class="card card-accent">
+              <h3 class="card-title">📦 Deployment Pipeline</h3>
+              <div class="step-item">
+                <div class="step-num-circle">1</div>
+                <div><div class="fw-700 fs-14">Save Trained Model</div><div class="fs-13 color-muted">Trained segmentation model saved after evaluation for prediction use</div></div>
+              </div>
+              <div class="step-item">
+                <div class="step-num-circle">2</div>
+                <div><div class="fw-700 fs-14">Load Model for Prediction</div><div class="fs-13 color-muted">Saved model used to process uploaded road crack images</div></div>
+              </div>
+              <div class="step-item">
+                <div class="step-num-circle">3</div>
+                <div><div class="fw-700 fs-14">Streamlit Interface</div><div class="fs-13 color-muted">Simple web interface for image upload and crack output visualization</div></div>
+              </div>
+            </div>
+            <div class="card card-accent-b">
+              <h3 class="card-title">🖼️ Final Output</h3>
+              <ul class="bullet-list" style="font-size:13px;">
+                <li><strong>Input Image:</strong> User uploads a road surface image</li>
+                <li><strong>Prediction Output:</strong> Crack regions are detected and segmented</li>
+                <li><strong>Visual Result:</strong> Crack-highlighted output is shown clearly</li>
+                <li><strong>Filtered Output:</strong> Only meaningful crack predictions are displayed</li>
+              </ul>
+            </div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:14px;">
+            <div class="card card-accent2">
+              <h3 class="card-title color-orange">⚠️ Deployment Challenges</h3>
+              <ul class="bullet-list" style="font-size:13px;">
+                <li>Very small crack detections created noisy output</li>
+                <li>Fine cracks were difficult to visualize clearly</li>
+                <li>Different image qualities affected prediction consistency</li>
+                <li>Output needed better crack highlighting for presentation</li>
+              </ul>
+            </div>
+            <div class="card" style="border-color:rgba(16,185,129,0.3); background:rgba(16,185,129,0.03);">
+              <h3 class="card-title" style="color:#10b981;">🔮 Future Scope</h3>
+              <ul class="bullet-list" style="font-size:13px;">
+                <li>Add more crack classes and improve multiclass segmentation</li>
+                <li>Improve crack severity estimation in future versions</li>
+                <li>Make the system more robust for real-world road images</li>
+                <li>Extend deployment for larger-scale road inspection use</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="slide-num">13 / 19</div>
+      </div>
+
+      <!-- ========== SLIDE 14: STREAMLIT OUTPUT ========== -->
+      <div class="slide" id="s14">
+        <div class="slide-bg-glow"></div>
+        <div class="slide-bottom-bar"></div>
+        <div class="logo-bar"><div class="logo-dot"></div>DEPLOYMENT OUTPUT</div>
+        <div class="tag">🚀 Streamlit UI</div>
+        <h2 class="section-title">Streamlit Deployment Output</h2>
+        <div class="grid-2" style="flex:1; gap:24px;">
+          <div class="card card-accent">
+            <h3 class="card-title">📦 What the Deployment Does</h3>
+            <ul class="bullet-list" style="font-size:14px;">
+              <li>User uploads a road image</li>
+              <li>The model processes the uploaded image</li>
+              <li>Crack regions are segmented and displayed</li>
+              <li>Prediction output is shown visually to the user</li>
+            </ul>
+          </div>
+          <div class="card" style="padding:12px; display:flex; flex-direction:column; gap:12px;">
+            <h3 class="card-title">📷 Streamlit App Screenshot</h3>
+            <div style="flex:1; display:flex; flex-direction:column; gap:10px; margin-top:8px;">
+              <img src="Screenshot 2026-03-26 022428.png" alt="Streamlit App Screenshot"
+                style="width:80%; border-radius:8px; object-fit:contain; border:1px solid var(--border);" />
+              <img src="Screenshot 2026-03-26 022447.png" alt="Streamlit App Screenshot"
+                style="width:80%; border-radius:8px; object-fit:contain; border:1px solid var(--border);" />
+            </div>
+          </div>
+        </div>
+        <div class="slide-num">14 / 19</div>
+      </div>
+
+      <!-- ========== SLIDE 15: VIDEO DEMO ========== -->
+      <div class="slide" id="s15">
+        <div class="slide-bg-glow"></div>
+        <div class="slide-bottom-bar"></div>
+        <div class="logo-bar"><div class="logo-dot"></div>DEMO PROOF</div>
+        <div class="tag">🎥 Video Demonstration</div>
+        <h2 class="section-title">Project Demo Video</h2>
+        <div style="flex:1; display:flex; flex-direction:column; gap:18px;">
+          <div class="highlight-box" style="text-align:center;">
+            <div style="font-family:'Syne',sans-serif; font-size:18px; font-weight:700; margin-bottom:6px;">
+              Working Demo of Road Crack Detection System
+            </div>
+            <div class="fs-13 color-muted">
+              This video demonstrates the uploaded image prediction flow,
+              crack segmentation output, and Streamlit deployment interface.
+            </div>
+          </div>
+          <div class="card" style="flex:1; display:flex; align-items:center; justify-content:center; padding:18px;">
+            <video controls style="width:100%; max-height:380px; border-radius:12px; object-fit:contain;">
+              <source src="demo.mp4" type="video/mp4" />
+              Your browser does not support the video tag.
+            </video>
+          </div>
+        </div>
+        <div class="slide-num">15 / 19</div>
+      </div>
+
+      <!-- ========== SLIDE 16: CHALLENGES ========== -->
+      <div class="slide" id="s16">
+        <div class="slide-bg-glow"></div>
+        <div class="slide-bottom-bar"></div>
+        <div class="logo-bar"><div class="logo-dot"></div>CHALLENGES</div>
+        <div class="tag">⚠️ Challenges Faced</div>
+        <h2 class="section-title">Challenges</h2>
+        <div class="grid-2" style="flex:1; gap:20px;">
+          <div class="card card-accent2">
+            <div class="icon-circle ic-orange">⚖️</div>
+            <h3 class="card-title color-orange">Class Imbalance</h3>
+            <p class="fs-14" style="color:#cbd5e1; line-height:1.6;">
+              Significant imbalance across crack types — alligator cracks were overrepresented while edge
+              cracks had far fewer samples. Addressed through targeted augmentation and class weighting during training.
+            </p>
+          </div>
+          <div class="card card-accent2">
+            <div class="icon-circle ic-orange">🔍</div>
+            <h3 class="card-title color-orange">Missing Edge Crack Data</h3>
+            <p class="fs-14" style="color:#cbd5e1; line-height:1.6;">
+              Edge cracks were underrepresented in publicly available datasets. Custom annotation was required
+              using Label Studio on additional collected images to supplement training data.
+            </p>
+          </div>
+          <div class="card card-accent2">
+            <div class="icon-circle ic-orange">✏️</div>
+            <h3 class="card-title color-orange">Annotation Complexity</h3>
+            <p class="fs-14" style="color:#cbd5e1; line-height:1.6;">
+              Precise polygon annotation for thin and irregular cracks is time-consuming and prone to human error.
+              Overlapping crack patterns required careful manual review and correction.
+            </p>
+          </div>
+          <div class="card card-accent2">
+            <div class="icon-circle ic-orange">🌧️</div>
+            <h3 class="card-title color-orange">Real-world Noise</h3>
+            <p class="fs-14" style="color:#cbd5e1; line-height:1.6;">
+              Images captured in varying conditions — shadows, rain, debris, oil stains — reduce detection accuracy.
+              Robust preprocessing and augmentation were applied to improve model generalization.
+            </p>
+          </div>
+        </div>
+        <div class="slide-num">16 / 19</div>
+      </div>
+
+      <!-- ========== SLIDE 17: FUTURE SCOPE ========== -->
+      <div class="slide" id="s17">
+        <div class="slide-bg-glow"></div>
+        <div class="slide-bottom-bar"></div>
+        <div class="logo-bar"><div class="logo-dot"></div>FUTURE IMPROVEMENT</div>
+        <div class="tag">🔮 Future Scope</div>
+        <h2 class="section-title">Future Scope</h2>
+        <div class="grid-2" style="flex:1; gap:24px;">
+          <div class="card card-accent">
+            <h3 class="card-title">Possible Improvements</h3>
+            <ul class="bullet-list" style="font-size:14px;">
+              <li>Add more crack images for better generalization</li>
+              <li>Improve multiclass crack segmentation further</li>
+              <li>Enhance output quality for fine crack detection</li>
+              <li>Extend the project for larger road inspection use</li>
+            </ul>
+          </div>
+          <div class="card card-accent-b">
+            <h3 class="card-title">Future Enhancements</h3>
+            <ul class="bullet-list" style="font-size:14px;">
+              <li>Add better crack severity estimation in later versions</li>
+              <li>Improve deployment for larger-scale usage</li>
+              <li>Use more diverse real-world road datasets</li>
+              <li>Build a stronger crack visualization workflow</li>
+            </ul>
+          </div>
+        </div>
+        <div class="slide-num">17 / 19</div>
+      </div>
+
+      <!-- ========== SLIDE 18: Q&A ========== -->
+      <div class="slide" id="s18">
+        <div class="slide-bg-glow"></div>
+        <div class="slide-bottom-bar"></div>
+        <div class="logo-bar"><div class="logo-dot"></div>Q&amp;A</div>
+        <div style="flex:1; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center;">
+          <div style="font-size:80px; margin-bottom:24px;">❓</div>
+          <div style="font-family:'Syne',sans-serif; font-size:64px; font-weight:800; color:var(--accent); line-height:1; margin-bottom:20px;">Queries?</div>
+          <div class="accent-line" style="margin:0 auto 24px;"></div>
+          <p class="subtitle" style="max-width:500px; margin-bottom:32px;">
+            Open the floor for questions, clarifications and discussion.
+          </p>
+          <div class="highlight-box" style="max-width:500px; padding:24px 32px;">
+            <div class="fw-700 fs-14" style="margin-bottom:8px;">Contact</div>
+            <div style="font-family:'Syne',sans-serif; font-size:18px; font-weight:700;">Anshuman Acharya</div>
+            <div style="font-size:13px; color:var(--accent); margin-top:6px;">🔗 linkedin.com/in/anshuman-a-acharya</div>
+          </div>
+        </div>
+        <div class="slide-num">18 / 19</div>
+      </div>
+
+      <!-- ========== SLIDE 19: THANK YOU ========== -->
+      <div class="slide" id="s19">
+        <div class="slide-bg-glow"></div>
+        <div class="slide-bottom-bar"></div>
+        <div class="logo-bar"><div class="logo-dot"></div>AI-BASED ROAD CRACK DETECTION</div>
+        <div style="flex:1; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center;">
+          <div class="thank-you" style="margin-bottom:24px;">Thank You</div>
+          <div class="accent-line" style="margin:0 auto 24px;"></div>
+          <p class="subtitle" style="max-width:500px; margin-bottom:32px;">
+            AI-Based Road Crack Detection &amp; Severity Assessment System
+          </p>
+          <div class="card" style="padding:24px 36px; text-align:center; border-color:rgba(244,98,15,0.4); margin-bottom:24px;">
+            <div class="fs-13 color-muted mb-8">👨‍💻 Presented By</div>
+            <div style="font-family:'Syne',sans-serif; font-size:22px; font-weight:700;">Anshuman Acharya</div>
+            <div style="font-size:13px; color:var(--accent); margin-top:6px;">🔗 linkedin.com/in/anshuman-a-acharya</div>
+          </div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin-bottom:28px;">
+            <div class="badge">📌 YOLOv8</div>
+            <div class="badge">🧠 U-Net</div>
+            <div class="badge">🔁 CRISP-ML(Q)</div>
+            <div class="badge badge-orange">🛣️ Road Safety AI</div>
+          </div>
+          <img src="logo.png" alt="Logo" style="height:56px; object-fit:contain;" />
+        </div>
+        <div class="slide-num">19 / 19</div>
+      </div>
+
+    </div><!-- end .deck -->
+
+    <!-- NAVIGATION -->
+    <div class="nav">
+      <button class="nav-btn" onclick="changeSlide(-1)">‹</button>
+      <div class="nav-dots" id="navDots"></div>
+      <div class="nav-counter" id="counter">1 / 19</div>
+      <button class="nav-btn" onclick="changeSlide(1)">›</button>
+    </div>
+
+    <!-- Fixed Logo top-right -->
+    <div style="position:fixed; top:14px; right:20px; z-index:1000; pointer-events:none;">
+      <img src="logo.png" alt="Logo" style="height:40px; object-fit:contain;" />
+    </div>
+
+    <script>
+      const TOTAL = 19;
+      let current = 1;
+
+      const dotsContainer = document.getElementById("navDots");
+      const counter = document.getElementById("counter");
+
+      for (let i = 1; i <= TOTAL; i++) {
+        const dot = document.createElement("div");
+        dot.className = "nav-dot" + (i === 1 ? " active" : "");
+        dot.onclick = () => goToSlide(i);
+        dotsContainer.appendChild(dot);
+      }
+
+      function goToSlide(n) {
+        const next = Math.max(1, Math.min(n, TOTAL));
+        if (next === current) return;
+
+        const prevSlide = document.getElementById("s" + current);
+        prevSlide.classList.remove("active");
+        prevSlide.style.display = "none";
+        dotsContainer.children[current - 1].classList.remove("active");
+
+        current = next;
+
+        const nextSlide = document.getElementById("s" + current);
+        nextSlide.style.display = "flex";
+        nextSlide.offsetHeight; // force reflow for animation
+        nextSlide.classList.add("active");
+        dotsContainer.children[current - 1].classList.add("active");
+        counter.textContent = current + " / " + TOTAL;
+      }
+
+      function changeSlide(dir) { goToSlide(current + dir); }
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowRight" || e.key === "ArrowDown") changeSlide(1);
+        if (e.key === "ArrowLeft"  || e.key === "ArrowUp")   changeSlide(-1);
+      });
+    </script>
+  </body>
+</html>
